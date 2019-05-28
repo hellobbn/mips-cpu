@@ -25,3 +25,96 @@ module register(
     end
     
 endmodule
+
+/* Special Purposed Registers here */
+module register_if_id(
+    input                   clk,
+    input                   rst,
+    input       [63:0]      i_dat,
+    input                   i_we,
+    output reg  [63:0]      o_dat
+);
+
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            o_dat <= 0;
+        end
+        else begin
+            if(i_we) begin
+                o_dat <= i_dat;
+            end
+            else begin
+                o_dat <= o_dat;
+            end
+        end
+    end
+endmodule
+
+module register_id_ex(
+    input                   clk,
+    input                   rst,
+    input       [167:0]     i_dat,
+    input                   i_we,
+    output reg  [167:0]     o_dat
+);
+
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            o_dat <= 0;
+        end
+        else begin
+            if(i_we) begin
+                o_dat <= i_dat;
+            end
+            else begin
+                o_dat <= o_dat;
+            end
+        end
+    end
+endmodule
+
+module register_ex_mem(
+    input                   clk,
+    input                   rst,
+    input       [106:0]     i_dat,
+    input                   i_we,
+    output reg  [106:0]     o_dat
+);
+
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            o_dat <= 0;
+        end
+        else begin
+            if(i_we) begin
+                o_dat <= i_dat;
+            end
+            else begin
+                o_dat <= o_dat;
+            end
+        end
+    end
+endmodule
+
+module register_mem_wb(
+    input                   clk,
+    input                   rst,
+    input       [69:0]      i_dat,
+    input                   i_we,
+    output reg  [69:0]      o_dat
+);
+
+    always @(posedge clk or posedge rst) begin
+        if(rst) begin
+            o_dat <= 0;
+        end
+        else begin
+            if(i_we) begin
+                o_dat <= i_dat;
+            end
+            else begin
+                o_dat <= o_dat;
+            end
+        end
+    end
+endmodule
