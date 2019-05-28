@@ -52,6 +52,8 @@ module cpu_impl(
     wire    [31:0]  w_wb_mux_register_wdat; // MUX deciding data to write to registers
     wire    [31:0]  w_ex_mux_alu_in_b;      // MUX to ALU input B
     wire    [31:0]  w_if_mux_pc_wdat;       // MUX deciding data written to PC
+    wire    [31:0]  w_ex_mux_alu_in_a;      // MUX deciding data input to ALU A (data forwarding)
+    wire    [31:0]  w_ex_mux_alu_in_b_queue;      // MUX deciding data input to MUX to ALU B (data forwarding)
 
     /* Wire from Memory */
     wire    [31:0]  w_if_in_from_mem;          // Instruction/data from memory
@@ -85,7 +87,8 @@ module cpu_impl(
     wire    [31:0]  w_id_pc_plus_four;      // PC + 4 in ID
 
     /* Wire from ID/EX */
-    wire    [157:0] w_id_ex;                // ID/EX output
+    wire    [167:0] w_id_ex;                // ID/EX output
+    wire    [31:0]  w_ex_instruction;       // EX Instruction
     wire            w_ex_reg_dst;           // EX reg dst
     wire            w_ex_mem_read;          // EX mem_read
     wire            w_ex_mem_to_reg;        // EX mem_to_reg
@@ -117,6 +120,7 @@ module cpu_impl(
     wire    [4:0]   w_mem_mux_ins_ir;
     wire            w_mem_pc_src;           // TODO: Add j
     wire    [31:0]  w_mem_read_data;
+    wire    [4:0]   w_mem_rd;               // rd field in EX/MEM
 
     /* Wire from MEM/WB */
     wire    [69:0]  w_mem_wb;
@@ -125,7 +129,11 @@ module cpu_impl(
     wire    [31:0]  w_wb_mem_read_data;
     wire    [31:0]  w_wb_alu_out_result;
     wire    [4:0]   w_wb_reg_addr;
+    wire    [4:0]   w_wb_rd;                // rd field in MEM/WB
 
+    /* Wire for Forwarding */
+    wire    [1:0]   w_forward_a;            // Forward A
+    wire    [1:0]   w_forward_b;            // Forward B
 
     /* Wire for PC + 4 */
     wire    [31:0]  w_if_pc_plus_four;  
@@ -175,7 +183,7 @@ module cpu_impl(
                             .o_read_data_2(o_reg_data));
 
     /* ALU */
-    alu_impl ALU(.in_a(w_ex_reg_file_rdat1),
+    alu_impl ALU(.in_a(w_ex_mux_alu_in_a),
                  .in_b(w_ex_mux_alu_in_b),
                  .in_select(w_ex_alu_op_fc),
                  .out_flag(w_ex_alu_out_flag),
@@ -206,19 +214,19 @@ module cpu_impl(
     // shift_left_two_26_to_28 Shift_Left_Two_26_BIT(.i_dat(w_instruction[25:0]),
     //                         .o_dat(w_sl_two_26_bit));
 
-    /* MUX 2: Register file Write register */
+    /* MUX: Register file Write register */
     two_way_mux_5_bit MUX_W_REG(.i_zero_dat(w_ex_insa),
                                 .i_one_dat(w_ex_insb),
                                 .sel(w_ex_reg_dst),
                                 .o_dat(w_ex_mux_ins_ir));
 
-    /* MUX 3: Register file write data */
+    /* MUX: Register file write data */
     two_way_mux MUX_REG_FILE_WDAT(.i_zero_dat(w_wb_alu_out_result),
                                   .i_one_dat(w_wb_mem_read_data),
                                   .sel(w_wb_mem_to_reg),
                                   .o_dat(w_wb_mux_register_wdat));
 
-    /* MUX 4: deciding data written to PC */
+    /* MUX: deciding data written to PC */
     // TODO: J Type
     four_way_mux MUX_DAT_TO_PC(.i_zero_dat(w_if_pc_plus_four),
                                .i_one_dat(w_mem_b_addr),
@@ -227,11 +235,26 @@ module cpu_impl(
                                .i_sel(w_mem_pc_src),
                                .o_dat(w_if_mux_pc_wdat));
 
-    /* MUX 6: ALU Input B */
+    /* MUX: ALU Input B */
     two_way_mux MAX_ALU_IN_B(.i_zero_dat(w_ex_reg_file_rdat2),
                              .i_third_dat(w_ex_sl_two_32_bit),
                              .i_sel(w_ex_alu_src_b),
                              .o_dat(w_ex_mux_alu_in_b));
+
+    /* MUX: Forward A */
+    four_way_mux MUX_FORWARD_A(.i_zero_dat(w_ex_reg_file_rdat1),
+                               .i_one_dat(w_wb_mux_register_wdat),
+                               .i_two_dat(w_mem_alu_out_result),
+                               .i_sel(w_forward_a),
+                               .o_dat(w_ex_mux_alu_in_a));
+
+    /* MUX: Forward B */
+    four_way_mux MUX_FORWARD_B(.i_zero_dat(w_ex_mux_alu_in_b_queue),
+                               .i_one_dat(w_wb_mux_register_wdat),
+                               .i_two_dat(w_mem_alu_out_result),
+                               .i_third_dat(0),
+                               .i_sel(w_forward_b),
+                               .o_dat(w_ex_mux_alu_in_b_queue));
     
     /* Data memory */
     dist_mem_gen_1 Data_Memory(.a(w_mem_b_addr),
@@ -250,29 +273,30 @@ module cpu_impl(
     assign w_id_ins = w_if_id[31:0];
     assign w_id_pc_plus_four = w_if_id[63:32];
 
-    /* ID/EX Register - 158 bit */
+    /* ID/EX Register - 168 bit */
     register_id_ex ID_EX(.clk(i_clk),
                          .rst(i_rst),
-                         .i_dat({w_id_ins[31:26], w_id_reg_write, w_id_mem_write, w_id_branch, w_id_alu_src_b, w_id_alu_op, w_id_ins[5:0], w_id_reg_dst, w_id_mem_read, w_id_mem_to_reg, w_id_pc_plus_four, w_id_reg_file_rdat1, w_id_reg_file_rdat2, w_id_sign_ext_dat, w_id_ins[20:16], w_id_ins[15:11]}),
+                         .i_dat({w_id_ins, w_id_reg_write, w_id_mem_write, w_id_branch, w_id_alu_src_b, w_id_alu_op, w_id_reg_dst, w_id_mem_read, w_id_mem_to_reg, w_id_pc_plus_four, w_id_reg_file_rdat1, w_id_reg_file_rdat2, w_id_sign_ext_dat}),
                          .i_we(1),
                          .o_dat(w_id_ex));
 
-    assign w_ex_in          =       w_id_ex[157:152];
-    assign w_ex_reg_write   =       w_id_ex[151];
-    assign w_ex_mem_write   =       w_id_ex[150];
-    assign w_ex_branch      =       w_id_ex[149];
-    assign w_ex_alu_src_b   =       w_id_ex[148];
-    assign w_ex_alu_op      =       w_id_ex[147];
-    assign w_ex_alu_ctrl_in =       w_id_ex[146:141];
-    assign w_ex_reg_dst     =       w_id_ex[140];
-    assign w_ex_mem_read    =       w_id_ex[139];
-    assign w_ex_mem_to_reg  =       w_id_ex[138];
-    assign w_ex_pc_plus_four =      w_id_ex[137:106];
-    assign w_ex_reg_file_rdat1 =    w_id_ex[105:74];
-    assign w_ex_reg_file_rdat2 =    w_id_ex[73:42];
-    assign w_ex_sign_ext    =       w_id_ex[41:10];
-    assign w_ex_insa        =       w_id_ex[9:5];           // [20:16]
-    assign w_ex_insb        =       w_id_ex[4:0];           // [15:10]
+    assign w_ex_instruction =       w_id_ex[167:136];
+    assign w_ex_in          =       w_ex_instruction[31:26];        // [31:26]
+    assign w_ex_reg_write   =       w_id_ex[135];
+    assign w_ex_mem_write   =       w_id_ex[134];
+    assign w_ex_branch      =       w_id_ex[133];
+    assign w_ex_alu_src_b   =       w_id_ex[132];
+    assign w_ex_alu_op      =       w_id_ex[131];
+    assign w_ex_alu_ctrl_in =       w_ex_instruction[5:0];          // [5:0]
+    assign w_ex_reg_dst     =       w_id_ex[130];
+    assign w_ex_mem_read    =       w_id_ex[129];
+    assign w_ex_mem_to_reg  =       w_id_ex[128];
+    assign w_ex_pc_plus_four =      w_id_ex[127:96];                // pc + 4
+    assign w_ex_reg_file_rdat1 =    w_id_ex[95:64];
+    assign w_ex_reg_file_rdat2 =    w_id_ex[63:32];
+    assign w_ex_sign_ext    =       w_id_ex[31:0];
+    assign w_ex_insa        =       w_ex_instruction[20:16];        // [20:16]
+    assign w_ex_insb        =       w_ex_instruction[15:10];        // [15:10]
 
     /* EX/MEM Register - 107 bit*/
     register_ex_mem EX_MEM(.clk(i_clk),
@@ -305,6 +329,15 @@ module cpu_impl(
     assign w_wb_mem_read_data = w_mem_wb[63:32];
     assign w_wb_alu_out_result = w_mem_wb[31:0];
     
+    /* Forwarding Unit */
+    forwarding_unit ForwardinngUnit(.i_ex_mem_reg_write(w_mem_reg_write),
+                                    .i_ex_mem_reg_rd(w_mem_rd),
+                                    .i_id_ex_reg_rs(w_ex_instruction[25:21]),
+                                    .i_id_ex_reg_rt(w_ex_instruction[20:16]),
+                                    .i_mem_wb_reg_write(w_wb_reg_write),
+                                    .i_mem_wb_reg_rd(w_wb_rd),
+                                    .o_forward_a(w_forward_a),
+                                    .o_forward_b(w_forward_b));
 
     /* Zero Branch Check */
     always @(*) begin
