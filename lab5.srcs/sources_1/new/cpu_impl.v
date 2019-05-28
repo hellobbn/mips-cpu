@@ -236,8 +236,8 @@ module cpu_impl(
                                .o_dat(w_if_mux_pc_wdat));
 
     /* MUX: ALU Input B */
-    two_way_mux MAX_ALU_IN_B(.i_zero_dat(w_ex_reg_file_rdat2),
-                             .i_third_dat(w_ex_sl_two_32_bit),
+    two_way_mux MAX_ALU_IN_B(.i_zero_dat(w_ex_mux_alu_in_b_queue),
+                             .i_one_dat(w_ex_sl_two_32_bit),
                              .i_sel(w_ex_alu_src_b),
                              .o_dat(w_ex_mux_alu_in_b));
 
