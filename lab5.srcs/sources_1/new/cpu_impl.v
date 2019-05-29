@@ -45,7 +45,8 @@ module cpu_impl(
     wire            w_id_mem_write;                
     wire            w_id_mem_read;
     wire     [1:0]  w_id_pc_source;
-    wire            w_id_branch;                         
+    wire            w_id_branch;
+    wire            w_id_pc_j_write;                         
 
     /* Wire from ALU Conteoller */
     wire     [2:0]  w_ex_alu_op_fc;         // Input to ALU, selecting OP
@@ -115,7 +116,7 @@ module cpu_impl(
     wire    [5:0]   w_ex_in;                // EX For zero branch test
 
     /* Wire from EX/MEM */
-    wire    [106:0] w_ex_mem;
+    wire    [138:0] w_ex_mem;
     wire            w_mem_reg_write;
     wire            w_mem_mem_to_reg;
     wire            w_mem_branch;
@@ -126,7 +127,6 @@ module cpu_impl(
     wire    [31:0]  w_mem_alu_out_result;
     wire    [31:0]  w_mem_reg_file_rdat2;
     wire    [4:0]   w_mem_mux_ins_ir;
-    wire            w_mem_pc_src;           // TODO: Add j
     wire    [31:0]  w_mem_read_data;
     wire    [4:0]   w_mem_rd;               // rd field in EX/MEM
 
@@ -155,8 +155,15 @@ module cpu_impl(
     wire            w_hazard_mux_id_ex;         // Control the control_signal to ID/EX
     wire            w_hazard_if_id_flush;       // will flush IF/ID when branch
 
+    /* Wire for J Address Calculation */
+    wire            w_ex_j_address;             // Jump Address
+    wire            w_mem_j_address;            // Actual jump takes place in MEM
+
     /* PC Write Control */   
     reg r_ex_zero, r_ex_b_pc_write;
+
+    /* PC Src Control */
+    reg     [1:0]   w_mem_pc_src;           // TODO: Add j
 
     /* CPU Control */
     cpu_control Control(.i_run(i_run),
@@ -212,7 +219,7 @@ module cpu_impl(
     register PC(.clk(i_clk),
                 .rst(i_rst),
                 .i_dat(w_if_mux_pc_wdat),
-                .i_we(1),                           // Always write PC
+                .i_we(w_hazard_pc_write),                           // Always write PC
                 .o_dat(w_if_pc));
 
     /* Sign Extend */
@@ -222,11 +229,6 @@ module cpu_impl(
     /* Shift Left 2 */
     l_shift_two Shift_Left_Two(.i_dat(w_ex_sign_ext),
                                .o_dat(w_ex_sl_two_32_bit));
-
-    /* Shift Left 2 - in only 26 bits */
-    // TODO: J-Type
-    // shift_left_two_26_to_28 Shift_Left_Two_26_BIT(.i_dat(w_instruction[25:0]),
-    //                         .o_dat(w_sl_two_26_bit));
 
     /* MUX: Register file Write register */
     two_way_mux_5_bit MUX_W_REG(.i_zero_dat(w_ex_insa),
@@ -241,10 +243,9 @@ module cpu_impl(
                                   .o_dat(w_wb_mux_register_wdat));
 
     /* MUX: deciding data written to PC */
-    // TODO: J Type
     four_way_mux MUX_DAT_TO_PC(.i_zero_dat(w_if_pc_plus_four),
                                .i_one_dat(w_mem_b_addr),
-                               .i_two_dat({w_if_pc[31:28], w_sl_two_26_bit}),       // TODO: THIS NEEDS TO BE CHAMGED
+                               .i_two_dat(w_mem_j_address),
                                .i_third_dat(0),
                                .i_sel(w_mem_pc_src),
                                .o_dat(w_if_mux_pc_wdat));
@@ -330,13 +331,14 @@ module cpu_impl(
     assign w_ex_insa        =       w_ex_instruction[20:16];        // [20:16]
     assign w_ex_insb        =       w_ex_instruction[15:10];        // [15:10]
 
-    /* EX/MEM Register - 107 bit*/
+    /* EX/MEM Register - 139 bit*/
     register_ex_mem EX_MEM(.clk(i_clk),
                            .rst(i_rst),
-                           .i_dat({w_ex_reg_write, w_ex_mem_to_reg, w_ex_branch, w_ex_mem_read, w_ex_mem_write, w_ex_b_addr, r_ex_b_pc_write, w_ex_alu_out_result, w_ex_reg_file_rdat2, w_ex_mux_ins_ir}),
+                           .i_dat({w_ex_j_address, w_ex_reg_write, w_ex_mem_to_reg, w_ex_branch, w_ex_mem_read, w_ex_mem_write, w_ex_b_addr, r_ex_b_pc_write, w_ex_alu_out_result, w_ex_reg_file_rdat2, w_ex_mux_ins_ir}),
                            .i_we(1),
                            .o_dat(w_ex_mem));
 
+    assign w_mem_j_address =        w_ex_mem[138:107];
     assign w_mem_reg_write =        w_ex_mem[106];
     assign w_mem_mem_to_reg =       w_ex_mem[105];
     assign w_mem_branch =           w_ex_mem[104];
@@ -400,5 +402,18 @@ module cpu_impl(
     assign w_ex_b_addr = w_ex_pc_plus_four + w_ex_sl_two_32_bit;
 
     /* MEM PC Src */
-    assign w_mem_pc_src = w_mem_branch & w_mem_b_pc_write;
+    always @(*) begin
+        if(w_mem_branch & w_mem_b_pc_write) begin
+            w_mem_pc_src = 2'b01;
+        end
+        else if(w_id_pc_j_write) begin
+            w_mem_pc_src = 2'b10;
+        end
+        else begin
+            w_mem_pc_src = 2'b00;
+        end
+    end
+
+    /* J-Type Address */
+    assign w_ex_j_address = {w_ex_pc_plus_four[31:28], w_ex_instruction[25:0], 2'b00};
 endmodule

@@ -86,9 +86,9 @@ endmodule
 module register_ex_mem(
     input                   clk,
     input                   rst,
-    input       [106:0]     i_dat,
+    input       [138:0]     i_dat,
     input                   i_we,
-    output reg  [106:0]     o_dat
+    output reg  [138:0]     o_dat
 );
 
     always @(posedge clk or posedge rst) begin
