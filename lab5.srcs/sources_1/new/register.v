@@ -32,12 +32,22 @@ module register_if_id(
     input                   rst,
     input       [63:0]      i_dat,
     input                   i_we,
+    input                   i_flush,        // Flush the register
     output reg  [63:0]      o_dat
 );
-
+    reg cnt;
     always @(posedge clk or posedge rst) begin
+        cnt <= 0;
         if(rst) begin
             o_dat <= 0;
+        end
+        else if(i_flush & (cnt == 0)) begin
+            o_dat <= 0;
+            cnt <= 1;
+        end
+        else if(cnt) begin
+            o_dat <= 0;
+            cnt <= 0;
         end
         else begin
             if(i_we) begin

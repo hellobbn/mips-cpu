@@ -5,6 +5,7 @@
 /* =========== Notes =================
  * Memory address: 8-bit
  * Memory width: 32 bit
+ * Control Hazard: When `beq, bne` occur, stop the pipeline
  *
  * =========== Control Signal ============
  * EX: reg_dst, alu_op, alu_src
@@ -17,6 +18,7 @@
  * ============ General Todo ===========
  * TODO: Add J-Type Support
  * TODO: Add I-Type Support
+ * TODO: Control Hazard resolve.
  */
 module cpu_impl(
     input               i_run,                  // Run signal
@@ -268,7 +270,6 @@ module cpu_impl(
                                .o_dat(w_ex_mux_alu_in_b_queue));
 
     /* MUX: Data to ID/EX */
-    /* TODO: 9-bit MUX */
     two_way_mux_9_bit MUX_DAT_ID_EX(.i_zero_dat({w_id_reg_write, w_id_mem_write, w_id_branch, w_id_alu_src_b, w_id_alu_op, w_id_reg_dst, w_id_mem_read, w_id_mem_to_reg}),                      // 9-bit Control Signal
                                     .i_one_dat(9'b000000000),
                                     .i_sel(w_hazard_mux_id_ex),
@@ -286,6 +287,7 @@ module cpu_impl(
                                       .i_if_id_reg_rs(w_id_ins[25:21]),
                                       .i_id_ex_reg_rt(w_ex_instruction[20:16]),
                                       .i_if_id_reg_rt(w_id_ins[20:16]),
+                                      .i_in_op_code(w_id_ins[31:26]),
                                       .o_if_id_reg_write(w_hazard_if_id_write),
                                       .o_pc_write(w_hazard_pc_write),
                                       .o_mux_id_ex(w_hazard_mux_id_ex));
