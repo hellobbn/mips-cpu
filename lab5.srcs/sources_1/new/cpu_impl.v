@@ -29,10 +29,15 @@ module cpu_impl(
     output  [31:0]      o_mem_data              // Output memory data
     );
 
+    /* ==========================================
+     *            Wires, Regs Here
+     * ==========================================
+     */
+
     /* Wire from control unit */
     wire            w_id_reg_dst;
     wire            w_id_reg_write;             
-    wire            w_id_alu_op;
+    wire     [1:0]  w_id_alu_op;
     wire            w_id_alu_src_b;
     wire            w_id_mem_to_reg;
     wire            w_id_mem_write;                
@@ -53,7 +58,8 @@ module cpu_impl(
     wire    [31:0]  w_ex_mux_alu_in_b;      // MUX to ALU input B
     wire    [31:0]  w_if_mux_pc_wdat;       // MUX deciding data written to PC
     wire    [31:0]  w_ex_mux_alu_in_a;      // MUX deciding data input to ALU A (data forwarding)
-    wire    [31:0]  w_ex_mux_alu_in_b_queue;      // MUX deciding data input to MUX to ALU B (data forwarding)
+    wire    [31:0]  w_ex_mux_alu_in_b_queue;        // MUX deciding data input to MUX to ALU B (data forwarding)
+    wire    [8:0]   w_id_mux_hazard_id_ex;          // MUX Controlling data to ID/EX - 0 if stalled
 
     /* Wire from Memory */
     wire    [31:0]  w_if_in_from_mem;          // Instruction/data from memory
@@ -87,7 +93,7 @@ module cpu_impl(
     wire    [31:0]  w_id_pc_plus_four;      // PC + 4 in ID
 
     /* Wire from ID/EX */
-    wire    [167:0] w_id_ex;                // ID/EX output
+    wire    [168:0] w_id_ex;                // ID/EX output
     wire    [31:0]  w_ex_instruction;       // EX Instruction
     wire            w_ex_reg_dst;           // EX reg dst
     wire            w_ex_mem_read;          // EX mem_read
@@ -140,6 +146,11 @@ module cpu_impl(
 
     /* Wire for the add in EX */
     wire    [31:0]  w_ex_b_addr;                // bne/beq address
+
+    /* Wire from Hazard Unit */
+    wire            w_hazard_pc_write;          // Prevent PC increment if stalled
+    wire            w_hazard_if_id_write;       // Prevent IF/ID write if stalled
+    wire            w_hazard_mux_id_ex;         // Control the control_signal to ID/EX
 
     /* PC Write Control */   
     reg r_ex_zero, r_ex_b_pc_write;
@@ -217,13 +228,13 @@ module cpu_impl(
     /* MUX: Register file Write register */
     two_way_mux_5_bit MUX_W_REG(.i_zero_dat(w_ex_insa),
                                 .i_one_dat(w_ex_insb),
-                                .sel(w_ex_reg_dst),
+                                .i_sel(w_ex_reg_dst),
                                 .o_dat(w_ex_mux_ins_ir));
 
     /* MUX: Register file write data */
     two_way_mux MUX_REG_FILE_WDAT(.i_zero_dat(w_wb_alu_out_result),
                                   .i_one_dat(w_wb_mem_read_data),
-                                  .sel(w_wb_mem_to_reg),
+                                  .i_sel(w_wb_mem_to_reg),
                                   .o_dat(w_wb_mux_register_wdat));
 
     /* MUX: deciding data written to PC */
@@ -255,6 +266,13 @@ module cpu_impl(
                                .i_third_dat(0),
                                .i_sel(w_forward_b),
                                .o_dat(w_ex_mux_alu_in_b_queue));
+
+    /* MUX: Data to ID/EX */
+    /* TODO: 9-bit MUX */
+    two_way_mux_9_bit MUX_DAT_ID_EX(.i_zero_dat({w_id_reg_write, w_id_mem_write, w_id_branch, w_id_alu_src_b, w_id_alu_op, w_id_reg_dst, w_id_mem_read, w_id_mem_to_reg}),                      // 9-bit Control Signal
+                                    .i_one_dat(9'b000000000),
+                                    .i_sel(w_hazard_mux_id_ex),
+                                    .o_dat(w_id_mux_hazard_id_ex));
     
     /* Data memory */
     dist_mem_gen_1 Data_Memory(.a(w_mem_b_addr),
@@ -262,6 +280,15 @@ module cpu_impl(
                                .clk(i_clk),
                                .we(w_mem_mem_write),
                                .spo(w_mem_read_data));
+
+    /* Hazard Unit */
+    hazard_detection_unit Hazard_Unit(.i_id_ex_mem_read(w_ex_mem_read),
+                                      .i_if_id_reg_rs(w_id_ins[25:21]),
+                                      .i_id_ex_reg_rt(w_ex_instruction[20:16]),
+                                      .i_if_id_reg_rt(w_id_ins[20:16]),
+                                      .o_if_id_reg_write(w_hazard_if_id_write),
+                                      .o_pc_write(w_hazard_pc_write),
+                                      .o_mux_id_ex(w_hazard_mux_id_ex));
 
     /* IF/ID Register - 64 bit*/
     register_if_id IF_ID(.clk(i_clk),
@@ -273,20 +300,20 @@ module cpu_impl(
     assign w_id_ins = w_if_id[31:0];
     assign w_id_pc_plus_four = w_if_id[63:32];
 
-    /* ID/EX Register - 168 bit */
+    /* ID/EX Register - 169 bit */
     register_id_ex ID_EX(.clk(i_clk),
                          .rst(i_rst),
-                         .i_dat({w_id_ins, w_id_reg_write, w_id_mem_write, w_id_branch, w_id_alu_src_b, w_id_alu_op, w_id_reg_dst, w_id_mem_read, w_id_mem_to_reg, w_id_pc_plus_four, w_id_reg_file_rdat1, w_id_reg_file_rdat2, w_id_sign_ext_dat}),
+                         .i_dat({w_id_ins, w_id_mux_hazard_id_ex, w_id_pc_plus_four, w_id_reg_file_rdat1, w_id_reg_file_rdat2, w_id_sign_ext_dat}),
                          .i_we(1),
                          .o_dat(w_id_ex));
 
-    assign w_ex_instruction =       w_id_ex[167:136];
+    assign w_ex_instruction =       w_id_ex[168:137];
     assign w_ex_in          =       w_ex_instruction[31:26];        // [31:26]
-    assign w_ex_reg_write   =       w_id_ex[135];
-    assign w_ex_mem_write   =       w_id_ex[134];
-    assign w_ex_branch      =       w_id_ex[133];
-    assign w_ex_alu_src_b   =       w_id_ex[132];
-    assign w_ex_alu_op      =       w_id_ex[131];
+    assign w_ex_reg_write   =       w_id_ex[136];
+    assign w_ex_mem_write   =       w_id_ex[135];
+    assign w_ex_branch      =       w_id_ex[134];
+    assign w_ex_alu_src_b   =       w_id_ex[133];
+    assign w_ex_alu_op      =       w_id_ex[132:131];
     assign w_ex_alu_ctrl_in =       w_ex_instruction[5:0];          // [5:0]
     assign w_ex_reg_dst     =       w_id_ex[130];
     assign w_ex_mem_read    =       w_id_ex[129];
