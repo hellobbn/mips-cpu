@@ -30,7 +30,7 @@ module hazard_detection_unit(
             o_mux_id_ex = 1;
         end
 
-        if(i_in_op_code == 6'b000100 | i_in_op_code == 6'b000101) begin
+        if(i_in_op_code == 6'b000100 | i_in_op_code == 6'b000101 | i_in_op_code == 6'b000010) begin
             /* stall for two cycles */
             o_if_id_flush = 1;
             o_pc_write = 0;
