@@ -63,9 +63,9 @@ endmodule
 module register_id_ex(
     input                   clk,
     input                   rst,
-    input       [167:0]     i_dat,
+    input       [169:0]     i_dat,
     input                   i_we,
-    output reg  [167:0]     o_dat
+    output reg  [169:0]     o_dat
 );
 
     always @(posedge clk or posedge rst) begin
@@ -86,9 +86,9 @@ endmodule
 module register_ex_mem(
     input                   clk,
     input                   rst,
-    input       [138:0]     i_dat,
+    input       [144:0]     i_dat,
     input                   i_we,
-    output reg  [138:0]     o_dat
+    output reg  [144:0]     o_dat
 );
 
     always @(posedge clk or posedge rst) begin
@@ -109,9 +109,9 @@ endmodule
 module register_mem_wb(
     input                   clk,
     input                   rst,
-    input       [69:0]      i_dat,
+    input       [75:0]      i_dat,
     input                   i_we,
-    output reg  [69:0]      o_dat
+    output reg  [75:0]      o_dat
 );
 
     always @(posedge clk or posedge rst) begin

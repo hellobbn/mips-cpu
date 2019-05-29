@@ -6,11 +6,7 @@
 
 
 module cpu_control(
-    input               i_run,          // Maybe necessary only here
-    input   [5:0]       i_op,           // Op in instruction
-    input               i_clk,
-    input               i_rst,
-    input   [31:0]      i_ins,
+    input       [31:0]  i_ins,
     output reg          o_reg_dst,
     output reg          o_reg_write,
     output reg  [1:0]   o_alu_op,

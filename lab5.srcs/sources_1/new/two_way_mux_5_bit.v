@@ -6,9 +6,9 @@
 module two_way_mux_5_bit(
     input       [4:0]      i_zero_dat,
     input       [4:0]      i_one_dat,
-    input                   sel,
+    input                  i_sel,
     output      [4:0]      o_dat
     );
 
-    assign o_dat = (sel == 1'b0) ? i_zero_dat : i_one_dat;
+    assign o_dat = (i_sel == 1'b0) ? i_zero_dat : i_one_dat;
 endmodule
