@@ -153,6 +153,7 @@ module cpu_impl(
     wire            w_hazard_pc_write;          // Prevent PC increment if stalled
     wire            w_hazard_if_id_write;       // Prevent IF/ID write if stalled
     wire            w_hazard_mux_id_ex;         // Control the control_signal to ID/EX
+    wire            w_hazard_if_id_flush;       // will flush IF/ID when branch
 
     /* PC Write Control */   
     reg r_ex_zero, r_ex_b_pc_write;
@@ -290,13 +291,15 @@ module cpu_impl(
                                       .i_in_op_code(w_id_ins[31:26]),
                                       .o_if_id_reg_write(w_hazard_if_id_write),
                                       .o_pc_write(w_hazard_pc_write),
-                                      .o_mux_id_ex(w_hazard_mux_id_ex));
+                                      .o_mux_id_ex(w_hazard_mux_id_ex),
+                                      .o_if_id_flush(w_hazard_if_id_flush));
 
     /* IF/ID Register - 64 bit*/
     register_if_id IF_ID(.clk(i_clk),
                          .rst(i_rst),
                          .i_dat({w_if_pc_plus_four, w_if_in_from_mem}),
                          .i_we(1),
+                         .i_flush(w_hazard_if_id_flush),
                          .o_dat(w_if_id));
 
     assign w_id_ins = w_if_id[31:0];
