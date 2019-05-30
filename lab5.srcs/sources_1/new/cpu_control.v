@@ -15,6 +15,7 @@ module cpu_control(
     output reg          o_mem_write,
     output reg          o_mem_read,
     output reg          o_branch,
+    output reg          o_is_i,
     output reg          o_pc_j_write        // write pc on j
     );
 
@@ -32,6 +33,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 1;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end 
             6'b100011: begin
                 /* lw */
@@ -43,6 +45,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 1;
                 o_mem_to_reg = 1;
+                o_is_i = 0;
             end
             6'b101011: begin
                 /* sw */
@@ -54,6 +57,7 @@ module cpu_control(
                 o_mem_write = 1;
                 o_reg_write = 0;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end 
             6'b000100: begin
                 /* beq */
@@ -65,6 +69,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 0;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end
             6'b000101: begin
                 /* bne */
@@ -76,6 +81,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 0;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end
             6'b001000, 6'b001100, 6'b001101, 6'b001110, 6'b001010: begin
                 /* I-Type: addi, andi, ori, xori, slti */
@@ -87,6 +93,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 1;
                 o_mem_to_reg = 0;
+                o_is_i = 1;
             end
             6'b000010: begin
                 /* j-Type */
@@ -99,6 +106,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 1;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end
             default: begin
                 /* default */
@@ -110,6 +118,7 @@ module cpu_control(
                 o_mem_write = 0;
                 o_reg_write = 0;
                 o_mem_to_reg = 0;
+                o_is_i = 0;
             end
         endcase
     end
