@@ -15,7 +15,7 @@
  * =========== Instructions ===========
  * j: PC = nPC; nPC = (PC & 0xf0000000) | (target << 2);
  */
- 
+
 module cpu_impl(
     input               i_run,                  // Run signal
     input               i_clk,                  // Clock
@@ -215,10 +215,10 @@ module cpu_impl(
                             .o_alu_op(w_ex_alu_op_fc));
     
     /* PC */
-    register PC(.clk(i_clk),
+    pc_register PC(.clk(i_clk),
                 .rst(i_rst),
                 .i_dat(w_if_mux_pc_wdat),
-                .i_we(w_hazard_pc_write),                           // Always write PC
+                .i_we(w_hazard_pc_write),
                 .o_dat(w_if_pc));
 
     /* Sign Extend */
