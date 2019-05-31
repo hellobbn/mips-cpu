@@ -17,6 +17,7 @@ module hazard_detection_unit(
     output  reg         o_if_id_flush           // clean the register
     );
 
+    /* FIXME: When both `bne` and `beq` happen */
     always @(*) begin
         /* Default here */
         o_if_id_reg_write = 1;
@@ -29,9 +30,9 @@ module hazard_detection_unit(
             o_pc_write = 0;
             o_mux_id_ex = 1;
         end
-
-        if(i_in_op_code == 6'b000100 | i_in_op_code == 6'b000101 | i_in_op_code == 6'b000010) begin
+        else if(i_in_op_code == 6'b000100 | i_in_op_code == 6'b000101 | i_in_op_code == 6'b000010) begin
             /* stall for two cycles */
+            /* Handle the stall first */
             o_if_id_flush = 1;
             o_pc_write = 0;
             o_if_id_reg_write = 0;

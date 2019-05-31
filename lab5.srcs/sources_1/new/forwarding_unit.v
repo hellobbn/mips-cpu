@@ -31,10 +31,10 @@ module forwarding_unit(
         o_forward_a = 2'b00;
         o_forward_b = 2'b00;
         if(~i_ex_mem_is_i) begin
-            if(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 5'h0) & (i_ex_mem_reg_rd == i_id_ex_reg_rs)) begin
+            if(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 5'h0) & (i_ex_mem_reg_rt == i_id_ex_reg_rs)) begin
                 o_forward_a = 2'b10;
             end
-            if(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 5'h0) & (i_ex_mem_reg_rd == i_id_ex_reg_rt)) begin
+            if(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 5'h0) & (i_ex_mem_reg_rt == i_id_ex_reg_rt)) begin
                 o_forward_b = 2'b10;
             end
         end
@@ -48,12 +48,12 @@ module forwarding_unit(
         end
 
         if(~i_mem_wb_is_i) begin
-            if(i_mem_wb_reg_write & (i_mem_wb_reg_rd != 5'h0) & (i_mem_wb_reg_rd == i_id_ex_reg_rs)
-                & ~(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 0) & (i_ex_mem_reg_rd == i_id_ex_reg_rs))) begin
+            if(i_mem_wb_reg_write & (i_mem_wb_reg_rt != 5'h0) & (i_mem_wb_reg_rt == i_id_ex_reg_rs)
+                & ~(i_ex_mem_reg_write & (i_ex_mem_reg_rt != 0) & (i_ex_mem_reg_rt == i_id_ex_reg_rs))) begin
                 o_forward_a = 2'b01;
             end
-            if(i_mem_wb_reg_write & (i_mem_wb_reg_rd != 5'h0) & (i_mem_wb_reg_rd == i_id_ex_reg_rt)
-                & ~(i_ex_mem_reg_write & (i_ex_mem_reg_rd != 0) & (i_ex_mem_reg_rd == i_id_ex_reg_rt))) begin
+            if(i_mem_wb_reg_write & (i_mem_wb_reg_rt != 5'h0) & (i_mem_wb_reg_rt == i_id_ex_reg_rt)
+                & ~(i_ex_mem_reg_write & (i_ex_mem_reg_rt != 0) & (i_ex_mem_reg_rt == i_id_ex_reg_rt))) begin
                 o_forward_b = 2'b01;
             end            
         end

@@ -105,7 +105,7 @@ module cpu_impl(
     wire    [4:0]   w_ex_insa;              // EX in[20:16]
     wire    [4:0]   w_ex_insb;              // EX in[15:11]
     wire    [5:0]   w_ex_alu_ctrl_in;       // EX for ALU Control reference
-    wire            w_ex_alu_op;            // EX ALU Op to ALU Control
+    wire    [1:0]   w_ex_alu_op;            // EX ALU Op to ALU Control
     wire            w_ex_alu_src_b;         // EX ALU B Src
     wire            w_ex_branch;            // EX Branch
     wire            w_ex_mem_write;         // EX MEM Write
@@ -283,7 +283,7 @@ module cpu_impl(
                                     .o_dat(w_id_mux_hazard_id_ex));
     
     /* Data memory */
-    dist_mem_gen_1 Data_Memory(.a(w_mem_b_addr[9:2]),
+    dist_mem_gen_1 Data_Memory(.a(w_mem_alu_out_result[9:2]),
                                .d(w_mem_reg_file_rdat2),
                                .clk(i_clk),
                                .we(w_mem_mem_write),
@@ -304,7 +304,7 @@ module cpu_impl(
     register_if_id IF_ID(.clk(i_clk),
                          .rst(i_rst),
                          .i_dat({w_if_pc_plus_four, w_if_in_from_mem}),
-                         .i_we(1),
+                         .i_we(w_hazard_if_id_write),
                          .i_flush(w_hazard_if_id_flush),
                          .o_dat(w_if_id));
 
@@ -336,7 +336,7 @@ module cpu_impl(
     assign w_ex_reg_file_rdat2 =    w_id_ex[63:32];
     assign w_ex_sign_ext    =       w_id_ex[31:0];
     assign w_ex_insa        =       w_ex_instruction[20:16];        // [20:16]
-    assign w_ex_insb        =       w_ex_instruction[15:10];        // [15:10]
+    assign w_ex_insb        =       w_ex_instruction[15:11];        // [15:10]
 
     /* EX/MEM Register - 146 bit*/
     register_ex_mem EX_MEM(.clk(i_clk),
@@ -383,8 +383,8 @@ module cpu_impl(
                                     .i_id_ex_reg_rt(w_ex_instruction[20:16]),
                                     .i_mem_wb_reg_write(w_wb_reg_write),
                                     .i_mem_wb_reg_rd(w_wb_rd),
-                                    .i_ex_mem_reg_rt(w_mem_mux_ins_ir),
-                                    .i_mem_wb_reg_rt(w_wb_reg_addr),
+                                    .i_ex_mem_reg_rt(w_mem_mux_ins_ir),         // Write back address
+                                    .i_mem_wb_reg_rt(w_wb_reg_addr),            // Write back address
                                     .i_ex_mem_is_i(w_mem_in_is_i),
                                     .i_mem_wb_is_i(w_wb_in_is_i),
                                     .o_forward_a(w_forward_a),

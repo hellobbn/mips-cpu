@@ -26,7 +26,7 @@ module register_file(
     assign o_read_data_2 = reg_file[i_read_addr_2];
 
     integer i;
-    always @(posedge i_clk) begin
+    always @(negedge i_clk or posedge i_reset) begin
         if(i_write_enable == 1) begin
             reg_file[i_write_addr] = i_write_data;
         end
