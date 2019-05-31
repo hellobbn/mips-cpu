@@ -17,7 +17,6 @@ module hazard_detection_unit(
     output  reg         o_if_id_flush           // clean the register
     );
 
-    /* FIXME: When both `bne` and `beq` happen */
     always @(*) begin
         /* Default here */
         o_if_id_reg_write = 1;

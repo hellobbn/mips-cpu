@@ -14,12 +14,8 @@
  *
  * =========== Instructions ===========
  * j: PC = nPC; nPC = (PC & 0xf0000000) | (target << 2);
- *
- * ============ General Todo ===========
- * TODO: Add J-Type Support
- * TODO: Add I-Type Support
- * TODO: Control Hazard resolve.
  */
+ 
 module cpu_impl(
     input               i_run,                  // Run signal
     input               i_clk,                  // Clock
@@ -164,7 +160,7 @@ module cpu_impl(
     reg r_ex_zero, r_ex_b_pc_write;
 
     /* PC Src Control */
-    reg     [1:0]   w_mem_pc_src;           // TODO: Add j
+    reg     [1:0]   w_mem_pc_src;
 
     /* CPU Control */
     cpu_control Control(//.i_run(i_run),
@@ -184,7 +180,6 @@ module cpu_impl(
                         .o_is_i(w_id_in_is_i));
 
     /* Instruction Memory */
-    // FIXME: now only using we === 0 to disable write
     dist_mem_gen_0 Memory(.a(w_if_pc[9:2]),
                           .d(w_mem_reg_file_rdat2),
                           .dpra(i_addr),
