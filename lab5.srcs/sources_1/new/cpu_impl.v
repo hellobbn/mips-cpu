@@ -182,11 +182,10 @@ module cpu_impl(
     /* Instruction Memory */
     dist_mem_gen_0 Memory(.a(w_if_pc[9:2]),
                           .d(w_mem_reg_file_rdat2),
-                          .dpra(i_addr),
+                          //.dpra(i_addr),
                           .clk(i_clk),
                           .we(0),                       // never write
-                          .spo(w_if_in_from_mem),
-                          .dpo(o_mem_data));
+                          .spo(w_if_in_from_mem));
 
     /* Register File */
     register_file Registers(.i_read_addr_0(w_id_ins[25:21]),
@@ -280,9 +279,11 @@ module cpu_impl(
     /* Data memory */
     dist_mem_gen_1 Data_Memory(.a(w_mem_alu_out_result[9:2]),
                                .d(w_mem_reg_file_rdat2),
+                               .dpra(i_addr),
                                .clk(i_clk),
                                .we(w_mem_mem_write),
-                               .spo(w_mem_read_data));
+                               .spo(w_mem_read_data),
+                               .dpo(o_mem_data));
 
     /* Hazard Unit */
     hazard_detection_unit Hazard_Unit(.i_id_ex_mem_read(w_ex_mem_read),
